@@ -55,6 +55,8 @@ bool CConfig::Load(const char *pconfName) {
 			Ltrim(p_confitem->ItemName);
 			Rtrim(p_confitem->ItemContent);
 			Ltrim(p_confitem->ItemContent);
+            //printf("%s, %s", p_confitem->ItemName, p_confitem->ItemContent);
+            printf("itemname=%s | itemcontent=%s\n",p_confitem->ItemName,p_confitem->ItemContent);
 
             m_ConfigItemList.push_back(p_confitem);
         }
@@ -62,8 +64,7 @@ bool CConfig::Load(const char *pconfName) {
 
     fclose(fp);
     size_t len = m_ConfigItemList.size();
-    printf("config size: %d\n", len);
-    printf("name:[%s], content:[%s]", m_ConfigItemList[0]->ItemName, m_ConfigItemList[0]->ItemContent);
+
     return true;
 
 }

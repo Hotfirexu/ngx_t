@@ -9,12 +9,9 @@
 //设置可执行程序相关函数：分噢诶内存，并且把环境变量拷贝到新内存中来
 void ngx_init_setproctitle() {
     //统计环境变量所占的内存。是以environ[i]是否为空作为环境变量结束标记
-    for (int i = 0; environ[i]; i++) { 
-        g_environlen += strlen(environ[i]) + 1;
-    }
 
-    gp_envmem = new char(g_environlen);
-    memset(gp_envmem, 0, g_environlen);
+    gp_envmem = new char(g_envneedmem);
+    memset(gp_envmem, 0, g_envneedmem);
 
     char *ptmp = gp_envmem;
 
@@ -37,7 +34,7 @@ void ngx_setproctitle(const char *title) {
         e_environlen += strlen(g_os_argv[i] + 1);
     }
 
-    size_t esy = e_environlen + g_environlen;
+    size_t esy = g_argvneedmem + g_envneedmem;
     if (esy <= titlelen) { //标题长度太大了，没有足够的空间了
         return;
     }
