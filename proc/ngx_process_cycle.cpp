@@ -67,9 +67,9 @@ void ngx_master_process_cycle() {
 
     //从配置文件中读取要创建的worker进程数量
     CConfig *p_config = CConfig::GetInstance(); //单例类
-    int workprocess = 4;
+    //int workprocess = 4;
     //int workprocess =  p_config->GetIntDefault("LogLevel",NGX_LOG_NOTICE);
-    //int workprocess = p_config->GetIntDefault("WorkerProcesses",1); //从配置文件中得到要创建的worker进程数量
+    int workprocess = p_config->GetIntDefault("WorkerProcesses",1); //从配置文件中得到要创建的worker进程数量
     ngx_start_worker_processes(workprocess);  //这里要创建worker子进程
 
     //创建子进程后，父进程的执行流程会返回到这里，子进程不会走进来    

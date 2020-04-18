@@ -67,6 +67,10 @@ void ngx_log_stderr(int err, const char *fmt, ...) {
     //往标准错误【一般是屏幕】输出信息    
     write(STDERR_FILENO,errstr,p - errstr); //三章七节讲过，这个叫标准错误，一般指屏幕
 
+    if (ngx_log.fd > STDERR_FILENO) {
+        ngx_log_error_core(NGX_LOG_ERR, err, (const char *)errstr);
+    }
+
     //测试代码：
     //printf("ngx_log_stderr()处理结果=%s\n",errstr);
     //printf("ngx_log_stderr()处理结果=%s",errstr);
