@@ -3,6 +3,8 @@
 
 #include <signal.h>
 
+#include "ngx_c_socket.h"
+
 typedef struct {
     char ItemName[50];
     char ItemContent[500];
@@ -22,6 +24,7 @@ extern size_t      g_envneedmem;
 extern int         g_os_argc; 
 extern char        **g_os_argv;
 extern char        *gp_envmem;
+extern CSocekt     g_socekt;
 
 
 extern pid_t        ngx_pid;

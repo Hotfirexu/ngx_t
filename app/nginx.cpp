@@ -16,7 +16,7 @@
 #include "ngx_c_socket.h"  //和socket通讯相关
 
 
-//本文件用的函数声明
+//只有本文件用的函数声明
 static void freeresource();
 
 //和设置标题有关的全局量
@@ -24,8 +24,8 @@ size_t  g_argvneedmem=0;        //保存下这些argv参数所需要的内存大
 size_t  g_envneedmem=0;         //环境变量所占内存大小
 int     g_os_argc;              //参数个数 
 char    **g_os_argv;            //原始命令行参数数组,在main中会被赋值
-char    *gp_envmem=NULL;        //指向自己分配的env环境变量的内存，在ngx_init_setproctitle()函数中会被分配内存
-int     g_daemonized=0;         //守护进程标记，标记是否启用了守护进程模式，0：未启用，1：启用了
+char    *gp_envmem = NULL;        //指向自己分配的env环境变量的内存，在ngx_init_setproctitle()函数中会被分配内存
+int     g_daemonized = 0;         //守护进程标记，标记是否启用了守护进程模式，0：未启用，1：启用了
 
 //socket相关
 CSocekt g_socekt;               //socket全局对象
@@ -49,13 +49,12 @@ int main(int argc, char *const *argv)
     ngx_parent = getppid();     //取得父进程的id 
     //统计argv所占的内存
     g_argvneedmem = 0;
-    for(i = 0; i < argc; i++)  //argv =  ./nginx -a -b -c asdfas
-    {
+    for(i = 0; i < argc; i++) { //argv =  ./nginx -a -b -c asdfas
         g_argvneedmem += strlen(argv[i]) + 1; //+1是给\0留空间。
     } 
+
     //统计环境变量所占的内存。注意判断方法是environ[i]是否为空作为环境变量结束标记
-    for(i = 0; environ[i]; i++) 
-    {
+    for(i = 0; environ[i]; i++) {
         g_envneedmem += strlen(environ[i]) + 1; //+1是因为末尾有\0,是占实际内存位置的，要算进来
     } //end for
 
@@ -68,10 +67,9 @@ int main(int argc, char *const *argv)
     ngx_reap = 0;                     //标记子进程没有发生变化
    
     //(2)初始化失败，就要直接退出的
-    //配置文件必须最先要，后边初始化啥的都用，所以先把配置读出来，供后续使用 
+    //配置文件必须要最先，后边初始化啥的都用，所以先把配置读出来，供后续使用 
     CConfig *p_config = CConfig::GetInstance(); //单例类
-    if(p_config->Load("nginx.conf") == false) //把配置文件内容载入到内存            
-    {   
+    if(p_config->Load("nginx.conf") == false) { //把配置文件内容载入到内存      
         ngx_log_init();    //初始化日志
         ngx_log_stderr(0,"配置文件[%s]载入失败，退出!","nginx.conf");
         //exit(1);终止进程，在main中出现和return效果一样 ,exit(0)表示程序正常, exit(1)/exit(-1)表示程序异常退出，exit(2)表示表示系统找不到指定的文件
@@ -82,7 +80,7 @@ int main(int argc, char *const *argv)
     //(3)一些必须事先准备好的资源，先初始化
     ngx_log_init();             //日志初始化(创建/打开日志文件)，这个需要配置项，所以必须放配置文件载入的后边；
     
-    //(4)一些初始化函数，准备放这里        
+    //(4)一些初始化函数，放这里        
     if(ngx_init_signals() != 0) //信号初始化
     {
         exitcode = 1;
