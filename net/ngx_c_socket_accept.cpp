@@ -92,7 +92,7 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc) {
 
              //如果不是用accept4()取得的socket，那么就要设置为非阻塞【因为用accept4()的已经被accept4()设置为非阻塞了】
              if (setnonblocking(s) == false) {
-                 ngx_close_accepted_connection(newc); //回收连接池中的连接（千万不能忘记），并关闭socket
+                 ngx_close_connection(newc); //回收连接池中的连接（千万不能忘记），并关闭socket
                 return;
              }
          }
@@ -104,11 +104,11 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc) {
 
          if (ngx_epoll_add_event(s,
                                 1, 0,
-                                EPOLLET,
+                                0,//EPOLLET,
                                 EPOLL_CTL_ADD,
                                 newc) == -1) {
 
-                ngx_close_accepted_connection(newc);
+                ngx_close_connection(newc);
                 return;
         }
 
@@ -119,14 +119,3 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc) {
     }while(1);
 }
 
-void CSocekt::ngx_close_accepted_connection(lpngx_connection_t c) {
-    int fd = c->fd;
-    ngx_free_connection(c);
-
-    c->fd = -1;
-    if (close(fd) == -1) {
-         ngx_log_error_core(NGX_LOG_ALERT,errno,"CSocekt::ngx_close_accepted_connection()中close(%d)失败!",fd); 
-    }
-
-    return;
-}

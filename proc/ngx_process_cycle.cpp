@@ -156,7 +156,6 @@ static void ngx_worker_process_init(int inum)
     g_socekt.ngx_epoll_init();           //初始化epoll相关内容，同时 往监听socket上增加监听事件，从而开始让监听端口履行其职责
 
     
-    //....将来再扩充代码
-    //....
+   
     return;
 }
