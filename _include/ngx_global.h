@@ -4,6 +4,7 @@
 #include <signal.h>
 
 #include "ngx_c_socket.h"
+#include "ngx_c_threadpool.h"
 
 typedef struct {
     char ItemName[50];
@@ -25,6 +26,7 @@ extern int         g_os_argc;
 extern char        **g_os_argv;
 extern char        *gp_envmem;
 extern CSocekt     g_socekt;
+extern CThreadPool g_threadpool;
 
 
 extern pid_t        ngx_pid;

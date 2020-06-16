@@ -1,10 +1,10 @@
 #.PHONY:all clean
 
 ifeq ($(DEBUG),true)
-CC = g++ -g 
+CC = g++ -std=c++0x -g 
 VERSION = debug 
 else
-CC = g++ 
+CC = g++ -std=c++0x
 VERSION = release
 endif
 
@@ -48,7 +48,7 @@ endif
 $(BIN):$(LINK_OBJ)
 	@echo "========== build $(VERSION) mode ========== !!!"
 	# $@:目标   $^:所有目标依赖
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -lpthread
 
 $(LINK_OBJ_DIR)/%.o:%.cpp
 	#gcc -c 是生成.o目标文件  -I可以指定头文件的路径
@@ -59,7 +59,7 @@ $(LINK_OBJ_DIR)/%.o:%.cpp
 $(DEP_DIR)/%.d:%.cpp
 	#echo 中的-n表示后续追加不换行
 	echo -n $(LINK_OBJ_DIR)/ > $@
-	g++ -I$(INCLUDE_PATH) -MM $^ >> $@
+	$(CC) -I$(INCLUDE_PATH) -MM $^ >> $@
 
 
 

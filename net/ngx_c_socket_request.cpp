@@ -18,6 +18,7 @@
 #include "ngx_func.h"
 #include "ngx_c_socket.h"
 #include "ngx_c_memory.h"
+#include "ngx_c_lockmutex.h"  //自动释放互斥量的一个类
 
 //来数据时候的处理，当连接上有数据来的时候，本函数会被ngx_epoll_process_events()所调用 
 void CSocekt::ngx_wait_request_handler(lpngx_connection_t c) {
@@ -149,7 +150,7 @@ void CSocekt::ngx_wait_request_handler_proc_p1(lpngx_connection_t c){
     e_pkgLen = ntohs(pPkgHeader->pkgLen);  //注意这里网络序转本机序，所有传输到网络上的2字节数据，都要用htons()转成网络序，所有从网络上收到的2字节数据，都要用ntohs()转成本机序
                                             //ntohs/htons的目的就是保证不同操作系统数据之间收发的正确性，【不管客户端/服务器是什么操作系统，发送的数字是多少，收到的就是多少】
     //恶意包或者包错误
-    if (e_pkgLen < m_iLenPkgHeader) {
+    if(e_pkgLen < m_iLenPkgHeader) {
 
         //报文总长度 < 包头长度，认定非法用户，废包
         //状态和接收位置都复原，这些值都有必要，因为有可能在其他状态比如_PKG_HD_RECVING状态调用这个函数；
@@ -157,7 +158,7 @@ void CSocekt::ngx_wait_request_handler_proc_p1(lpngx_connection_t c){
         c->precvbuf = c->dataHeadInfo;
         c->irecvlen = m_iLenPkgHeader; 
 
-    } else if (e_pkgLen > (_PKG_MAX_LENGTH - 1000)) {
+    } else if(e_pkgLen > (_PKG_MAX_LENGTH - 1000)) {
 
         //恶意包，太大，认定非法用户，废包【包头中说这个包总长度这么大，这不行】
         c->curStat = _PKG_HD_INIT_;
@@ -180,7 +181,8 @@ void CSocekt::ngx_wait_request_handler_proc_p1(lpngx_connection_t c){
         //2) 再填写包头内容
         pTmpBuffer += m_iLenMsgHeader;                      //往后跳，跳到消息头，指向包头
         memcpy(pTmpBuffer, pPkgHeader, m_iLenPkgHeader);    //直接把收到的包头拷贝进来
-        if (e_pkgLen == m_iLenPkgHeader) { //只有包头没有包体
+        
+        if(e_pkgLen == m_iLenPkgHeader) { //只有包头没有包体
 
             //这相当于接收完整了，直接扔入消息队列中
             ngx_wait_request_handler_proc_plast(c);
@@ -200,8 +202,12 @@ void CSocekt::ngx_wait_request_handler_proc_p1(lpngx_connection_t c){
 //收到一个完整包后的处理【plast表示最后阶段】，放到一个函数中，方便调用
 void CSocekt::ngx_wait_request_handler_proc_plast(lpngx_connection_t c){
 
+    int irmqc = 0;  //消息队列当前信息数量
+
     //把这段内存存放到消息队列中去
-    inMsgRecvQueue(c->pnewMemPointer);
+    inMsgRecvQueue(c->pnewMemPointer, irmqc);
+
+    g_threadpool.Call(irmqc);     //激发某个线程去处理业务逻辑
 
     c->ifnewrecvMem      = false;               //内存不再需要释放，因为你收完整了包，这个包被上边调用inMsgRecvQueue()移入消息队列，那么释放内存就属于业务逻辑去干，不需要回收连接到连接池中干了
     c->pnewMemPointer    = NULL;                
@@ -212,33 +218,42 @@ void CSocekt::ngx_wait_request_handler_proc_plast(lpngx_connection_t c){
 }
 
 //当收到一个完整包之后，将完整包入消息队列，这个包在服务器端应该是 消息头+包头+包体 格式 buf这段内存 ： 消息头 + 包头 + 包体
-void CSocekt::inMsgRecvQueue(char *buf) {
+void CSocekt::inMsgRecvQueue(char *buf, int &irmqc) {
+
+    CLock lock(&m_recvMessageQueueMutex);       //自动加锁解锁很方便，不需要手工去解锁了
+
     
     m_MsgRecvQueue.push_back(buf);
+    ++m_iRecvMsgQueueCount;
+    irmqc = m_iRecvMsgQueueCount;
 
-    tmpoutMsgRecvQueue();
+    //tmpoutMsgRecvQueue();
 
 
-     ngx_log_stderr(0,"非常好，收到了一个完整的数据包【包头+包体】！");  
+     //ngx_log_stderr(0,"非常好，收到了一个完整的数据包【包头+包体】！");  
 
 }
 
 //临时函数，用于将Msg中消息干掉
-void CSocekt::tmpoutMsgRecvQueue(){
+char *CSocekt::outMsgRecvQueue(){
 
-    if (m_MsgRecvQueue.empty()) return;
+    CLock lock(&m_recvMessageQueueMutex);
 
-    int size = m_MsgRecvQueue.size();
-    if (size < 1000) return;
 
-    CMemory *p_memory = CMemory::GetInstance();
-    int cha = size - 500;
-    for (int i = 0; i < cha; i++) {
-        char *sTmpMsgBuf = m_MsgRecvQueue.front();
-        m_MsgRecvQueue.pop_front();
-        p_memory->FreeMemory(sTmpMsgBuf);
-    }
+    if (m_MsgRecvQueue.empty()) return NULL;
+
+    char *sTmpMsgBuf = m_MsgRecvQueue.front();
+    m_MsgRecvQueue.pop_front();
+    --m_iRecvMsgQueueCount;
+    return sTmpMsgBuf;
+
+}
+
+//消息处理线程主函数，专门处理各种接收到的TCP消息
+//pMsgBuf：发送过来的消息缓冲区，消息本身是自解释的，通过包头可以计算整个包长
+//         消息本身格式【消息头+包头+包体】 
+void CSocekt::threadRecvProcFunc(char *pMsgBuf)
+{
 
     return;
-
 }

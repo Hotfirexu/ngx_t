@@ -140,7 +140,11 @@ static void ngx_worker_process_cycle(int inum,const char *pprocname) {
         ngx_process_events_and_timers(); //处理网络事件和定时器事件
     
     } //end for(;;)
+
+    g_threadpool.StopAll();
     return;
+
+
 }
 
 //描述：子进程创建时调用本函数进行一些初始化工作
@@ -153,6 +157,14 @@ static void ngx_worker_process_init(int inum)
         ngx_log_error_core(NGX_LOG_ALERT,errno,"ngx_worker_process_init()中sigprocmask()失败!");
     }
 
+    //初始化线程池，要比socket创建早
+    CConfig *p_config = CConfig::GetInstance();
+    int tmpthreadnums = p_config->GetIntDefault("ProcMsgRecvWorkThreadCount", 5);
+    if (g_threadpool.Create(tmpthreadnums) == false) {
+        exit(-2);
+    }
+
+    sleep(1);
     g_socekt.ngx_epoll_init();           //初始化epoll相关内容，同时 往监听socket上增加监听事件，从而开始让监听端口履行其职责
 
     

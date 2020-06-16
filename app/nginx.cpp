@@ -14,6 +14,7 @@
 #include "ngx_func.h"      //各种函数声明
 #include "ngx_c_conf.h"    //和配置文件处理相关的类,名字带c_表示和类有关
 #include "ngx_c_socket.h"  //和socket通讯相关
+#include "ngx_c_threadpool.h"
 
 
 //只有本文件用的函数声明
@@ -28,7 +29,8 @@ char    *gp_envmem = NULL;        //指向自己分配的env环境变量的内�
 int     g_daemonized = 0;         //守护进程标记，标记是否启用了守护进程模式，0：未启用，1：启用了
 
 //socket相关
-CSocekt g_socekt;               //socket全局对象
+CSocekt         g_socekt;               //socket全局对象
+CThreadPool     g_threadpool;
 
 //和进程本身有关的全局量
 pid_t   ngx_pid;                //当前进程的pid

@@ -214,7 +214,7 @@ int CSocekt::ngx_epoll_init() {
         c->rhandler = &CSocekt::ngx_event_accept;
 
         //往监听socket上增加监听事件，从而开始让监听端口履行职责【如果不加这行，虽然端口能连上，但不会触发ngx_epoll_process_events()里边的epoll_wait()往下走】
-        if (ngx_epoll_add_event( (*pos)->fd,     //socekt句柄
+        if (ngx_epoll_add_event((*pos)->fd,     //socekt句柄
                                 1,0,             //读，写【只关心读事件，所以参数2：readevent=1,而参数3：writeevent=0】
                                 0,               //其他补充标记
                                 EPOLL_CTL_ADD,   //事件类型【增加，还有删除/修改】
